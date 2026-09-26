@@ -37,4 +37,11 @@ Fünf Leben. Eine richtige Antwort hält den Schild, es wird nichts abgezogen.
 
 Auf dem Handy gibt es Steuerkreuze und eine Feuertaste.
 
-Der spielbare Stand läuft in der Vorschau. Quelltext der Simulation: `src/game`.
+## Lokal starten
+
+```bash
+npm install
+npm run dev
+```
+
+Der Dev-Server hört auf Port 8080.

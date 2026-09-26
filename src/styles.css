@@ -1,0 +1,46 @@
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@700;800&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #070b12;
+  --color-surface: #101722;
+  --color-surface-2: #182232;
+  --color-fg: #e7eef8;
+  --color-muted: #93a0b5;
+  --color-primary: #3ddcbf;
+  --color-accent: #f0a202;
+  --color-line: #2a384c;
+  --font-sans: "Outfit", system-ui, sans-serif;
+  --font-display: "Syne", sans-serif;
+  --radius-lg: 1rem;
+}
+
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+  }
+}
+
+.vignette {
+  background: radial-gradient(ellipse at center, transparent 42%, var(--color-bg) 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .astrum-pop {
+    animation: none !important;
+  }
+}
