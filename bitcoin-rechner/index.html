@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bitcoin-Steuerrechner</title>
+<meta name="description" content="Live-Bitcoin-Kurs, Steuer-Break-even (Haltefrist), Szenario-Rechner, Power-Law & Zyklus-Muster.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%23f7931a'/%3E%3Ctext x='16' y='22' font-size='18' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'%3E%E2%82%BF%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <span class="logo">₿</span>
+    <div>
+      <h1>Bitcoin-Steuerrechner</h1>
+      <span class="ver" id="version"></span>
+    </div>
+  </div>
+  <div class="live" id="live">
+    <div class="live-main">
+      <span class="price" id="livePrice">–</span>
+      <span class="chg" id="liveChange"></span>
+    </div>
+    <div class="live-sub">
+      <span id="liveUsd"></span>
+      <span class="dot" id="liveDot"></span>
+      <span id="liveStatus">lädt …</span>
+      <button class="ghost small" id="refresh" title="Kurs neu laden">↻</button>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" data-tab="steuer" aria-selected="true">1 · Steuer &amp; Break-even</button>
+  <button role="tab" data-tab="szenario">2 · Szenario</button>
+  <button role="tab" data-tab="modelle">3 · Modelle &amp; Tiefpunkt</button>
+  <button role="tab" data-tab="muster">4 · Zyklus-Muster</button>
+  <button role="tab" data-tab="info">Info</button>
+</nav>
+
+<main>
+  <!-- ============ 1 STEUER ============ -->
+  <section class="panel" id="tab-steuer">
+    <div class="grid2">
+      <div class="card">
+        <h2>Heute kaufen oder warten?</h2>
+        <p class="muted">Kauf <b>heute</b>: nach mehr als einem Jahr Haltefrist steuerfrei (§ 23 EStG).
+          Kauf <b>nach dem Stichtag</b>: Annahme, dass Gewinne dann ohne Haltefrist besteuert werden.</p>
+        <div class="form">
+          <label>Anlagebetrag (€)<input type="number" id="invest" min="100" step="100"></label>
+          <label>Stichtag neue Regel / Kauf später am<input type="date" id="buyDateB"></label>
+          <label>Anlagehorizont: Verkauf in <span id="yearsLbl1"></span>
+            <input type="range" id="years1" min="1" max="10" step="0.5"></label>
+          <label>Erwarteter Kurs beim Verkauf (€)<input type="number" id="pt1" min="1" step="1000"></label>
+        </div>
+        <p class="hint" id="ptHint1"></p>
+      </div>
+      <div class="card result">
+        <h2>Ergebnis</h2>
+        <div class="kpis">
+          <div class="kpi"><span>Kauf heute steuerfrei ab</span><b id="taxFreeDate">–</b></div>
+          <div class="kpi"><span>Break-even-Kaufkurs später</span><b id="beP">–</b></div>
+          <div class="kpi accent"><span>Nötiger Kursrückgang bis zum Kauf</span><b id="beDrop">–</b></div>
+          <div class="kpi"><span>Konsens-Tief der Modelle</span><b id="consTief">–</b></div>
+        </div>
+        <p id="beText" class="explain"></p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Nötiger Rückgang je nach Verkaufskurs</h2>
+      <p class="muted">Je höher der spätere Gewinn, desto mehr muss Bitcoin bis zu deinem späteren Kauf fallen, um die Steuer auszugleichen. Die Kurve nähert sich dem Steuersatz.</p>
+      <div class="chart-wrap short"><canvas id="chartBE"></canvas></div>
+      <div class="table-wrap"><table id="tableBE"></table></div>
+    </div>
+
+    <details class="card" id="taxBox">
+      <summary><h2>Steuer-Annahmen</h2></summary>
+      <div class="form">
+        <label>Steuersatz neue Regel (%)<input type="number" id="rateNew" step="0.001" min="0" max="60"></label>
+        <label>Freibetrag neue Regel (€/Jahr)<input type="number" id="allowance" step="100" min="0"></label>
+        <label>Persönlicher Steuersatz bei Verkauf &lt; 1 Jahr (%)<input type="number" id="personal" step="0.5" min="0" max="50"></label>
+        <label>Freigrenze § 23 EStG (€/Jahr)<input type="number" id="freigrenze" step="100" min="0"></label>
+      </div>
+      <p class="hint">26,375 % = 25 % Abgeltungsteuer + 5,5 % Soli (mit Kirchensteuer ca. 27,8–28 %). Freibetrag 1.000 € (Ledige) bzw. 2.000 € (Verheiratete), sofern nicht schon durch andere Kapitalerträge verbraucht. Ob und ab wann eine neue Besteuerung kommt, ist eine Annahme – bitte den aktuellen Stand prüfen.</p>
+    </details>
+  </section>
+
+  <!-- ============ 2 SZENARIO ============ -->
+  <section class="panel" id="tab-szenario" hidden>
+    <div class="grid2">
+      <div class="card">
+        <h2>Deine Annahmen</h2>
+        <div class="form">
+          <label>Kursverlauf aus
+            <select id="source"></select></label>
+          <label>Kurs beim späteren Kauf (€)<input type="number" id="pb" min="1" step="1000"></label>
+          <label>Erwarteter Kurs beim Verkauf (€)<input type="number" id="pt2" min="1" step="1000"></label>
+          <label>Anlagehorizont: Verkauf in <span id="yearsLbl2"></span>
+            <input type="range" id="years2" min="1" max="10" step="0.5"></label>
+        </div>
+        <p class="hint" id="srcHint"></p>
+      </div>
+      <div class="card result">
+        <h2>Wer hat am Ende mehr?</h2>
+        <div class="versus">
+          <div class="side" id="sideA"></div>
+          <div class="side" id="sideB"></div>
+        </div>
+        <p id="diffText" class="big-diff"></p>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Verlauf: Depotwert nach Steuer, wenn du an diesem Tag verkaufen würdest</h2>
+      <div class="chart-wrap"><canvas id="chartSzen"></canvas></div>
+    </div>
+  </section>
+
+  <!-- ============ 3 MODELLE ============ -->
+  <section class="panel" id="tab-modelle" hidden>
+    <div class="card">
+      <div class="row-between">
+        <h2>Kurs, Power-Law-Kanal und Boden-Indikatoren</h2>
+        <div class="seg" id="rangeSeg">
+          <button data-range="all">Alles</button>
+          <button data-range="8">8 J.</button>
+          <button data-range="4" class="on">4 J.</button>
+        </div>
+      </div>
+      <div class="chart-wrap tall"><canvas id="chartModel"></canvas></div>
+      <p class="hint" id="plInfo"></p>
+    </div>
+    <div class="card">
+      <h2>Wo liegt der Tiefpunkt?</h2>
+      <div class="table-wrap"><table id="tableModels"></table></div>
+    </div>
+    <div>
+      <div class="card">
+        <h2>Bisherige Zyklen</h2>
+        <div class="table-wrap"><table id="tableCycles"></table></div>
+        <p class="hint">Hoch = höchster Tagesschlusskurs nach dem Halving, Tief = tiefster Kurs in den 700 Tagen danach.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 4 MUSTER ============ -->
+  <section class="panel" id="tab-muster" hidden>
+    <div class="card">
+      <div class="controls">
+        <label>Art der Wiederholung
+          <select id="patMode">
+            <option value="damped">Gedämpft (auf heutige Zyklusgröße skaliert)</option>
+            <option value="ratio">1:1 prozentual wiederholen</option>
+            <option value="trend">Abstand zum Power-Law-Trend</option>
+          </select></label>
+        <label>Ausrichtung
+          <select id="patAnchor">
+            <option value="today">am heutigen Kurs</option>
+            <option value="ath">am Zyklushoch</option>
+          </select></label>
+        <label>Stärke <span id="ampLbl"></span><input type="range" id="amp" min="40" max="150" step="5"></label>
+        <fieldset id="cycleChecks"><legend>Zyklen</legend></fieldset>
+      </div>
+      <div class="chart-wrap tall"><canvas id="chartPat"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>Was wäre, wenn sich die Vergangenheit wiederholt?</h2>
+      <p class="muted" id="patSub"></p>
+      <div class="table-wrap"><table id="tablePat"></table></div>
+    </div>
+  </section>
+
+  <!-- ============ INFO ============ -->
+  <section class="panel" id="tab-info" hidden>
+    <div class="card prose">
+      <h2>So rechnet das Programm</h2>
+      <ul>
+        <li><b>Kauf heute (alte Regel):</b> Verkauf nach mehr als einem Jahr ist steuerfrei. Verkaufst du früher, wird der Gewinn mit deinem persönlichen Satz besteuert (über der Freigrenze von 1.000 € komplett).</li>
+        <li><b>Kauf später (neue Regel, Annahme):</b> Gewinn minus Freibetrag × Steuersatz, unabhängig von der Haltedauer. Verluste werden nicht verrechnet.</li>
+        <li><b>Break-even:</b> der Kaufkurs, bei dem beide Wege nach Steuer gleich viel bringen. Für große Gewinne gilt ungefähr: nötiger Rückgang ≈ Steuersatz.</li>
+        <li><b>Power-Law:</b> Regression log(Kurs) = a + b·log(Tage seit 3.1.2009) über die gesamte Historie. Boden = tiefster Abstand seit 2012, Decke = höchster.</li>
+        <li><b>Realized Price:</b> durchschnittlicher Einstandspreis aller Coins (Coin Metrics, Kurs ÷ MVRV). Zyklustiefs lagen bisher beim 0,56- bis 0,78-fachen.</li>
+        <li><b>200-Wochen-Linie:</b> gleitender Durchschnitt der letzten 1.400 Tage.</li>
+        <li><b>Zyklus-Rücksetzer:</b> Trend der bisherigen Rückgänge vom Hoch zum Tief, fortgeschrieben auf den aktuellen Zyklus.</li>
+        <li><b>Muster:</b> der Verlauf früherer Zyklen ab ihrem Hoch, an den heutigen Zyklus angehängt. „Gedämpft“ skaliert die Ausschläge so, dass der Rücksetzer dem heutigen Trend entspricht.</li>
+      </ul>
+      <h2>Daten</h2>
+      <p id="dataInfo"></p>
+      <h2>Wichtig</h2>
+      <p>Keine Steuer- oder Anlageberatung. Modelle beschreiben die Vergangenheit; die Zukunft kann ganz anders verlaufen. Steuerliche Regeln (insbesondere eine mögliche Abschaffung der Haltefrist) bitte mit einer Steuerberatung prüfen.</p>
+      <h2>Versionen</h2>
+      <div id="changelog"></div>
+      <p><button class="ghost" id="reset">Alle Eingaben zurücksetzen</button></p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <label class="cur">Anzeige in
+    <select id="currency"><option value="EUR">Euro</option><option value="USD">US-Dollar</option></select>
+  </label>
+  <label class="cur">Kurs manuell
+    <input type="number" id="manualPrice" placeholder="leer = live" step="100">
+  </label>
+  <span id="footVer"></span>
+</footer>
+
+<script src="lib/chart.umd.min.js"></script>
+<script src="data/btc-history.js"></script>
+<script src="calc.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
