@@ -48,4 +48,4 @@ Der Dev-Server hört auf Port 8080.
 
 ## Weitere Programme
 
-- [`bitcoin-rechner/`](bitcoin-rechner/): Bitcoin-Steuerrechner (Live-Kurs, Haltefrist-Break-even, Power-Law, Zyklus-Muster). `bitcoin-rechner/index.html` im Browser öffnen.
+- [`bitcoin-rechner/`](bitcoin-rechner/): Bitcoin-Steuerrechner (Live-Kurs, Haltefrist-Break-even, Power-Law, Zyklus-Muster). Fertige Einzeldatei: `bitcoin-rechner/dist/bitcoin-steuerrechner.html`.

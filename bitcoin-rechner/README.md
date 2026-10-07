@@ -8,7 +8,9 @@ und später Steuer zahlen?**
 
 ## Starten
 
-`index.html` im Browser öffnen (Doppelklick genügt), ganz ohne Installation und ohne Server.
+**`dist/bitcoin-steuerrechner.html`** öffnen: eine einzige Datei mit allem drin. Du kannst sie herunterladen, per Mail schicken oder aufs Handy kopieren, und sie läuft per Doppelklick.
+(`index.html` funktioniert nur zusammen mit den übrigen Dateien des Ordners.)
+Nach Code-Änderungen neu bauen: `python3 scripts/build-single.py`.
 Für den Live-Kurs braucht der Browser Internet; ohne Internet nimmt die App den letzten eingebetteten Kurs.
 
 ## Die Fenster

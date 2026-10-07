@@ -2,8 +2,9 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.0.0";
+  const VERSION = "1.1.0";
   const CHANGELOG = [
+    ["1.1.0", "2026-10-07", "Komplett in einer einzigen HTML-Datei (dist/bitcoin-steuerrechner.html) – funktioniert ohne Zusatzdateien. Feld-Aktualisierung beim Wechsel der Kursquelle korrigiert."],
     ["1.0.0", "2026-10-06", "Erste Version: Live-Kurs, Steuer-Break-even, Szenario-Rechner, Power-Law & Boden-Modelle, Zyklus-Muster."],
   ];
   const C = window.BTCCalc;
@@ -348,7 +349,7 @@
     setVal($("buyDateB"), state.buyDateB);
     setVal($("years1"), state.years);
     $("yearsLbl1").textContent = fmtYears(+state.years) + " (" + dateDE(endMs) + ")";
-    setVal($("pt1"), pt ? Math.round(pt) : "");
+    (state.source === "own" ? setVal : (el, v) => { el.value = v; })($("pt1"), pt ? Math.round(pt) : "");
     ["rateNew", "allowance", "personal", "freigrenze"].forEach((k) => setVal($(k), state[k]));
     $("ptHint1").textContent = `Power-Law-Trend am Verkaufstag: ${eur(s.plFairEnd)} · Quelle: ${sourceLabel(state.source)} (änderbar in Tab 2).`;
 
@@ -458,8 +459,10 @@
     const opts = sourceOptions(s);
     if (sel.options.length !== opts.length) sel.innerHTML = opts.map(([v, l]) => `<option value="${v}">${l}</option>`).join("");
     sel.value = state.source;
-    setVal($("pb"), s.pb ? Math.round(s.pb) : "");
-    setVal($("pt2"), s.pt ? Math.round(s.pt) : "");
+    // Bei Modell-/Muster-Quelle immer den berechneten Wert zeigen, auch im fokussierten Feld
+    const put = state.source === "own" ? setVal : (el, v) => { el.value = v; };
+    put($("pb"), s.pb ? Math.round(s.pb) : "");
+    put($("pt2"), s.pt ? Math.round(s.pt) : "");
     setVal($("years2"), state.years);
     $("yearsLbl2").textContent = fmtYears(+state.years) + " (" + dateDE(s.endMs) + ")";
     $("srcHint").textContent = s.hint + ` Später-Kauf am ${dateDE(s.buyB)}.`;

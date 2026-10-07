@@ -3,6 +3,12 @@
 Versionierung nach [SemVer](https://semver.org/lang/de/): MAJOR.MINOR.PATCH.
 Die Versionsnummer steht in `VERSION`, `package.json` und `app.js` (`VERSION`) und wird in der App angezeigt.
 
+## 1.1.0 – 2026-10-07
+
+- **Eine einzige Datei:** `dist/bitcoin-steuerrechner.html` enthält alles (Code, Kursdaten, Diagramm-Bibliothek). In 1.0.0 funktionierte `index.html` nur zusammen mit den übrigen Dateien des Ordners, deshalb lief allein geöffnet keine Berechnung.
+- Neues Build-Skript `scripts/build-single.py`.
+- Korrigiert: Beim Wechsel der Kursquelle (Modell/Muster) zeigten die Eingabefelder teils noch den alten Wert.
+
 ## 1.0.0 – 2026-10-06
 
 Erste Version.
