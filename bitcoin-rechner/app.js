@@ -2,8 +2,9 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.0";
+  const VERSION = "1.2.0";
   const CHANGELOG = [
+    ["1.2.0", "2026-10-07", "Alle Werte standardmäßig in US-Dollar (Kurse, Anlagebetrag, Ergebnisse, Diagramme). Euro bleibt unten umschaltbar."],
     ["1.1.0", "2026-10-07", "Komplett in einer einzigen HTML-Datei (dist/bitcoin-steuerrechner.html) – funktioniert ohne Zusatzdateien. Feld-Aktualisierung beim Wechsel der Kursquelle korrigiert."],
     ["1.0.0", "2026-10-06", "Erste Version: Live-Kurs, Steuer-Break-even, Szenario-Rechner, Power-Law & Boden-Modelle, Zyklus-Muster."],
   ];
@@ -18,7 +19,7 @@
     rateNew: 26.375, allowance: 1000, personal: 42, freigrenze: 1000,
     patMode: "damped", patAnchor: "today", amp: 100,
     cycles: { 2011: false, 2013: true, 2017: true, 2021: true },
-    currency: "EUR", manualPrice: null, range: "4", tab: "steuer",
+    currency: "USD", manualPrice: null, range: "4", tab: "steuer", usdDefault: true,
   };
 
   /* ---------- Zustand ---------- */
@@ -26,7 +27,12 @@
   function load() {
     try {
       const raw = localStorage.getItem(STORE_KEY);
-      if (raw) return { ...DEFAULTS, ...JSON.parse(raw) };
+      if (raw) {
+        const st = { ...DEFAULTS, ...JSON.parse(raw) };
+        // ältere Versionen speicherten Euro-Beträge → einmalig auf Dollar umstellen
+        if (!JSON.parse(raw).usdDefault) { st.currency = "USD"; st.pb = null; st.pt = null; st.manualPrice = null; st.usdDefault = true; }
+        return st;
+      }
     } catch (e) { /* ohne Speicher weiter */ }
     return structuredClone(DEFAULTS);
   }
@@ -43,9 +49,9 @@
   const eurFmt = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
   const usdFmt = new Intl.NumberFormat("de-DE", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
   const compactFmt = new Intl.NumberFormat("de-DE", { notation: "compact", maximumFractionDigits: 1 });
-  const eur = (v) => (v == null || !isFinite(v) ? "–" : eurFmt.format(v));
+  const money = (v) => (v == null || !isFinite(v) ? "–" : (state.currency === "EUR" ? eurFmt : usdFmt).format(v));
   const pct = (v, d = 1) => (v == null || !isFinite(v) ? "–" : (v * 100).toLocaleString("de-DE", { maximumFractionDigits: d, minimumFractionDigits: d }).replace("-", "−") + " %");
-  const signed = (v) => (v >= 0 ? "+" : "−") + eur(Math.abs(v)).replace("-", "");
+  const signed = (v) => (v >= 0 ? "+" : "−") + money(Math.abs(v)).replace("-", "");
   const dateDE = (ms) => (ms == null ? "–" : new Date(ms).toLocaleDateString("de-DE", { timeZone: "UTC" }));
   const monthDE = (ms) => new Date(ms).toLocaleDateString("de-DE", { timeZone: "UTC", month: "short", year: "numeric" });
   const fmtYears = (y) => (y === 1 ? "1 Jahr" : y.toLocaleString("de-DE") + " Jahren");
@@ -109,8 +115,10 @@
 
   function nowMs() { return C.utcDay(Date.now()); }
   function fx() { return live.eur && live.usd ? live.eur / live.usd : FX_FALLBACK; }
+  /** Faktor USD → Anzeigewährung (1 bei Dollar). */
+  function mf() { return state.currency === "EUR" ? fx() : 1; }
   function priceNowUsd(series) {
-    if (state.manualPrice > 0) return state.manualPrice / fx();
+    if (state.manualPrice > 0) return state.manualPrice / mf();
     if (live.usd) return live.usd;
     return series ? series.usd[series.usd.length - 1] : H.usd[H.usd.length - 1];
   }
@@ -138,9 +146,9 @@
   function taxParams() {
     return {
       rateNew: (+state.rateNew || 0) / 100,
-      allowance: +state.allowance || 0,
+      allowance: (+state.allowance || 0) * mf() / fx(),
       personal: (+state.personal || 0) / 100,
-      freigrenze: +state.freigrenze || 0,
+      freigrenze: (+state.freigrenze || 0) * mf() / fx(),
     };
   }
 
@@ -162,7 +170,7 @@
   /** Alles, was die Tabs 1 und 2 brauchen (EUR). */
   function scenario() {
     const m = getModel();
-    const f = fx();
+    const f = mf();
     const today = nowMs();
     const P0 = priceNowUsd(m.series) * f;
     const endMs = C.addYears(today, +state.years);
@@ -320,10 +328,9 @@
   /* ---------- Rendern ---------- */
   function renderHeader() {
     const m = getModel();
-    const f = fx();
     const pUsd = priceNowUsd(m.series);
-    $("livePrice").textContent = eur(pUsd * f);
-    $("liveUsd").textContent = usdFmt.format(pUsd);
+    $("livePrice").textContent = money(pUsd * mf());
+    $("liveUsd").textContent = state.currency === "EUR" ? usdFmt.format(pUsd) : eurFmt.format(pUsd * fx());
     const ch = $("liveChange");
     if (live.change != null && !(state.manualPrice > 0)) {
       ch.textContent = (live.change >= 0 ? "▲ " : "▼ ") + pct(Math.abs(live.change), 2) + " 24 h";
@@ -351,12 +358,12 @@
     $("yearsLbl1").textContent = fmtYears(+state.years) + " (" + dateDE(endMs) + ")";
     (state.source === "own" ? setVal : (el, v) => { el.value = v; })($("pt1"), pt ? Math.round(pt) : "");
     ["rateNew", "allowance", "personal", "freigrenze"].forEach((k) => setVal($(k), state[k]));
-    $("ptHint1").textContent = `Power-Law-Trend am Verkaufstag: ${eur(s.plFairEnd)} · Quelle: ${sourceLabel(state.source)} (änderbar in Tab 2).`;
+    $("ptHint1").textContent = `Power-Law-Trend am Verkaufstag: ${money(s.plFairEnd)} · Quelle: ${sourceLabel(state.source)} (änderbar in Tab 2).`;
 
     const taxFree = C.taxFreeFrom(s.today);
     $("taxFreeDate").textContent = dateDE(taxFree);
     const cons = m.bm.consensus.usd * f;
-    $("consTief").textContent = `${eur(cons)} (${pct(cons / P0 - 1, 0)})`;
+    $("consTief").textContent = `${money(cons)} (${pct(cons / P0 - 1, 0)})`;
 
     if (!pt || !be) {
       $("beP").textContent = "–"; $("beDrop").textContent = "–"; $("beText").textContent = "Bitte einen Verkaufskurs eingeben.";
@@ -365,16 +372,16 @@
       $("beText").textContent = "Selbst bei einem Kurs nahe null würde sich das Warten nicht lohnen.";
     } else {
       const drop = 1 - be.price / P0;
-      $("beP").textContent = eur(be.price);
+      $("beP").textContent = money(be.price);
       $("beDrop").textContent = drop > 0 ? "−" + pct(drop) : "keiner";
       let txt;
       if (endMs < C.taxFreeFrom(s.today)) {
         txt = `Achtung: Dein Verkauf am ${dateDE(endMs)} liegt vor dem Ende der Haltefrist – auch der Kauf heute wird dann besteuert. `;
       } else {
-        txt = `Kaufst du heute für ${eur(invest)} und verkaufst am ${dateDE(endMs)} bei ${eur(pt)}, bleiben dir steuerfrei ${eur(A.net)}. `;
+        txt = `Kaufst du heute für ${money(invest)} und verkaufst am ${dateDE(endMs)} bei ${money(pt)}, bleiben dir steuerfrei ${money(A.net)}. `;
       }
       if (drop > 0) {
-        txt += `Damit sich das Warten bis ${dateDE(buyB)} lohnt, müsstest du dann für höchstens ${eur(be.price)} kaufen können – ${pct(drop)} unter dem heutigen Kurs. `;
+        txt += `Damit sich das Warten bis ${dateDE(buyB)} lohnt, müsstest du dann für höchstens ${money(be.price)} kaufen können – ${pct(drop)} unter dem heutigen Kurs. `;
         const consDrop = 1 - cons / P0;
         if (consDrop > drop) txt += `Das Konsens-Tief der Modelle (${pct(consDrop, 0)} tiefer) läge darunter – historisch wäre so ein Rückgang also möglich, aber nicht sicher, und es müsste genau zu deinem Kaufzeitpunkt passen.`;
         else txt += `Das Konsens-Tief der Modelle (${pct(consDrop, 0)} tiefer) reicht dafür nicht – nach den Modellen spricht mehr für den Kauf heute.`;
@@ -397,7 +404,7 @@
     let html = "<thead><tr><th>Verkaufskurs</th><th>Kauf heute: netto</th><th>Break-even-Kauf später</th><th>Nötiger Rückgang</th><th>Steuer bei Kauf später</th></tr></thead><tbody>";
     for (const r of rows) {
       const c = calc(r.pt);
-      html += `<tr class="${r.mine ? "hl" : ""}"><td>${eur(r.pt)}${r.mine ? " (deine Annahme)" : ` (${(r.pt / P0).toLocaleString("de-DE")}×)`}</td><td>${eur(c.netA)}</td><td>${eur(c.price)}</td><td>${c.drop > 0 ? "−" + pct(c.drop) : "–"}</td><td>${eur(c.taxB)}</td></tr>`;
+      html += `<tr class="${r.mine ? "hl" : ""}"><td>${money(r.pt)}${r.mine ? " (deine Annahme)" : ` (${(r.pt / P0).toLocaleString("de-DE")}×)`}</td><td>${money(c.netA)}</td><td>${money(c.price)}</td><td>${c.drop > 0 ? "−" + pct(c.drop) : "–"}</td><td>${money(c.taxB)}</td></tr>`;
     }
     $("tableBE").innerHTML = html + "</tbody>";
 
@@ -421,12 +428,12 @@
         interaction: { mode: "nearest", intersect: false },
         scales: {
           x: { type: "logarithmic", min: curve[0].x, max: curve[curve.length - 1].x, title: { display: true, text: "Kurs beim Verkauf", color: ax.tick },
-            ticks: { color: ax.tick, callback: (v) => { const mm = v / Math.pow(10, Math.floor(Math.log10(v))); return [1, 2, 5].includes(Math.round(mm * 10) / 10) ? compactFmt.format(v) + " €" : ""; } }, grid: { color: ax.grid } },
+            ticks: { color: ax.tick, callback: (v) => { const mm = v / Math.pow(10, Math.floor(Math.log10(v))); return [1, 2, 5].includes(Math.round(mm * 10) / 10) ? compactFmt.format(v) + " " + curSym() : ""; } }, grid: { color: ax.grid } },
           y: { min: 0, title: { display: true, text: "Rückgang bis zum Kauf (%)", color: ax.tick }, ticks: { color: ax.tick, callback: (v) => v + " %" }, grid: { color: ax.grid } },
         },
         plugins: {
           ...baseOptions().plugins,
-          tooltip: { callbacks: { title: (it) => it.length ? "Verkauf bei " + eur(it[0].parsed.x) : "", label: (it) => `${it.dataset.label}: ${it.parsed.y.toLocaleString("de-DE", { maximumFractionDigits: 1 })} %` } },
+          tooltip: { callbacks: { title: (it) => it.length ? "Verkauf bei " + money(it[0].parsed.x) : "", label: (it) => `${it.dataset.label}: ${it.parsed.y.toLocaleString("de-DE", { maximumFractionDigits: 1 })} %` } },
         },
       }),
     });
@@ -447,11 +454,11 @@
   function sideHtml(cls, title, sub, r, buyPrice) {
     if (!r) return `<h3>${title}</h3><p class="muted">keine Daten</p>`;
     return `<h3>${title}</h3><div class="muted">${sub}</div>
-      <div class="net">${eur(r.net)}</div>
-      <dl><dt>Kaufkurs</dt><dd>${eur(buyPrice)}</dd>
+      <div class="net">${money(r.net)}</div>
+      <dl><dt>Kaufkurs</dt><dd>${money(buyPrice)}</dd>
       <dt>Bitcoin</dt><dd>${r.coins.toLocaleString("de-DE", { maximumFractionDigits: 5 })}</dd>
-      <dt>Wert vor Steuer</dt><dd>${eur(r.gross)}</dd>
-      <dt>Steuer</dt><dd>${eur(r.tax)}</dd></dl>`;
+      <dt>Wert vor Steuer</dt><dd>${money(r.gross)}</dd>
+      <dt>Steuer</dt><dd>${money(r.tax)}</dd></dl>`;
   }
 
   function renderSzenario(s) {
@@ -476,7 +483,7 @@
       const diff = s.B.net - s.A.net;
       d.innerHTML = diff >= 0
         ? `Später kaufen bringt <span class="pos">${signed(diff)}</span> mehr – trotz Steuer.`
-        : `Heute kaufen bringt <span class="pos">${eur(-diff)}</span> mehr.`;
+        : `Heute kaufen bringt <span class="pos">${money(-diff)}</span> mehr.`;
     } else d.textContent = "";
 
     // Verlauf
@@ -504,12 +511,12 @@
       options: baseOptions({
         scales: {
           x: timeAxis(s.today, end),
-          y: { ...logAxis("€"), title: { display: true, text: "Depotwert nach Steuer", color: ax.tick } },
-          y1: { ...logAxis("€", "right"), grid: { display: false }, title: { display: true, text: "Kurs", color: ax.tick } },
+          y: { ...logAxis(curSym()), title: { display: true, text: "Depotwert nach Steuer", color: ax.tick } },
+          y1: { ...logAxis(curSym(), "right"), grid: { display: false }, title: { display: true, text: "Kurs", color: ax.tick } },
         },
         plugins: {
           ...baseOptions().plugins,
-          tooltip: { ...baseOptions().plugins.tooltip, callbacks: { title: (it) => (it.length ? dateDE(it[0].parsed.x) : ""), label: (it) => `${it.dataset.label}: ${eur(it.parsed.y)}` } },
+          tooltip: { ...baseOptions().plugins.tooltip, callbacks: { title: (it) => (it.length ? dateDE(it[0].parsed.x) : ""), label: (it) => `${it.dataset.label}: ${money(it.parsed.y)}` } },
           vlines: { lines: [
             { x: C.taxFreeFrom(s.today), label: "steuerfrei (heute-Kauf)", color: css("--a") },
             { x: s.buyB, label: "Kauf später", color: css("--b") },
@@ -519,8 +526,8 @@
     });
   }
 
-  function cur(v) { return state.currency === "EUR" ? v * fx() : v; }
-  function curFmt(v) { return state.currency === "EUR" ? eur(v * fx()) : usdFmt.format(v); }
+  function cur(v) { return v * mf(); }
+  function curFmt(v) { return money(v * mf()); }
   const curSym = () => (state.currency === "EUR" ? "€" : "$");
 
   function renderModelle(s) {
@@ -567,7 +574,7 @@
         scales: { x: timeAxis(startMs, futureEnd), y: logAxis(curSym()) },
         plugins: {
           ...baseOptions().plugins,
-          tooltip: { ...baseOptions().plugins.tooltip, callbacks: { title: (it) => (it.length ? dateDE(it[0].parsed.x) : ""), label: (it) => `${it.dataset.label}: ${state.currency === "EUR" ? eur(it.parsed.y) : usdFmt.format(it.parsed.y)}` } },
+          tooltip: { ...baseOptions().plugins.tooltip, callbacks: { title: (it) => (it.length ? dateDE(it[0].parsed.x) : ""), label: (it) => `${it.dataset.label}: ${money(it.parsed.y)}` } },
           vlines: { lines: [
             { x: today, label: "heute", color: css("--muted") },
             { x: s.buyB, label: "Kauf später", color: css("--b") },
@@ -628,7 +635,7 @@
         scales: { x: timeAxis(startMs, endMs), y: logAxis(curSym()) },
         plugins: {
           ...baseOptions().plugins,
-          tooltip: { ...baseOptions().plugins.tooltip, callbacks: { title: (it) => (it.length ? dateDE(it[0].parsed.x) : ""), label: (it) => `${it.dataset.label}: ${state.currency === "EUR" ? eur(it.parsed.y) : usdFmt.format(it.parsed.y)}` } },
+          tooltip: { ...baseOptions().plugins.tooltip, callbacks: { title: (it) => (it.length ? dateDE(it[0].parsed.x) : ""), label: (it) => `${it.dataset.label}: ${money(it.parsed.y)}` } },
           vlines: { lines: [
             { x: s.today, label: "heute", color: css("--muted") },
             { x: s.buyB, label: "Kauf später", color: css("--b") },
@@ -638,7 +645,7 @@
       }),
     });
 
-    $("patSub").textContent = `Kauf heute bei ${eur(s.P0)} gegen Kauf am ${dateDE(s.buyB)}, Verkauf am ${dateDE(s.endMs)} (${fmtYears(+state.years)}), Anlage ${eur(s.invest)}. Netto = nach Steuer.`;
+    $("patSub").textContent = `Kauf heute bei ${money(s.P0)} gegen Kauf am ${dateDE(s.buyB)}, Verkauf am ${dateDE(s.endMs)} (${fmtYears(+state.years)}), Anlage ${money(s.invest)}. Netto = nach Steuer.`;
     const f = s.f, tax = s.tax, invest = s.invest;
     const rowFor = (label, path, srcKey, hl) => {
       const pb = C.valueAt(path, s.buyB), pt = C.valueAt(path, s.endMs);
@@ -647,7 +654,7 @@
       const A = pt ? C.netResult({ invest, buyPrice: s.P0, sellPrice: pt * f, buyMs: s.today, sellMs: s.endMs, regime: "alt", tax }) : null;
       const B = pt && pb ? C.netResult({ invest, buyPrice: pb * f, sellPrice: pt * f, buyMs: s.buyB, sellMs: s.endMs, regime: "neu", tax }) : null;
       const diff = A && B ? B.net - A.net : null;
-      return `<tr class="${hl ? "hl" : ""}"><td>${label}</td><td>${pb ? curFmt(pb) : "–"}</td><td>${lo ? curFmt(lo[1]) + `<br><span class="muted">${monthDE(lo[0])}</span>` : "–"}</td><td>${pt ? curFmt(pt) : "–"}</td><td>${A ? eur(A.net) : "–"}</td><td>${B ? eur(B.net) : "–"}</td><td class="${diff == null ? "" : diff >= 0 ? "pos" : "neg"}">${diff == null ? "reicht nicht" : diff >= 0 ? "später +" + eur(diff) : "heute +" + eur(-diff)}</td><td><button class="link" data-use="${srcKey}">übernehmen</button></td></tr>`;
+      return `<tr class="${hl ? "hl" : ""}"><td>${label}</td><td>${pb ? curFmt(pb) : "–"}</td><td>${lo ? curFmt(lo[1]) + `<br><span class="muted">${monthDE(lo[0])}</span>` : "–"}</td><td>${pt ? curFmt(pt) : "–"}</td><td>${A ? money(A.net) : "–"}</td><td>${B ? money(B.net) : "–"}</td><td class="${diff == null ? "" : diff >= 0 ? "pos" : "neg"}">${diff == null ? "reicht nicht" : diff >= 0 ? "später +" + money(diff) : "heute +" + money(-diff)}</td><td><button class="link" data-use="${srcKey}">übernehmen</button></td></tr>`;
     };
     let html = "<thead><tr><th>Muster</th><th>Kurs bei Kauf später</th><th>Tief im Zeitraum</th><th>Kurs bei Verkauf</th><th>Heute kaufen: netto</th><th>Später kaufen: netto</th><th>Vorteil</th><th></th></tr></thead><tbody>";
     s.pats.forEach((p) => { if (p.on) html += rowFor("Zyklus " + p.label, p.path, "pat:" + p.label, false); });
@@ -667,6 +674,7 @@
     document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === tab));
     document.querySelectorAll(".panel").forEach((p) => { p.hidden = p.id !== "tab-" + tab; });
     setVal($("currency"), state.currency);
+    document.querySelectorAll(".cs").forEach((el) => { el.textContent = curSym(); });
     setVal($("manualPrice"), state.manualPrice || "");
     if (tab === "steuer") renderSteuer(s);
     if (tab === "szenario") renderSzenario(s);
@@ -708,7 +716,14 @@
       if (k) { state.source = k; state.tab = "szenario"; render(); }
     });
     $("rangeSeg").addEventListener("click", (e) => { if (e.target.dataset.range) { state.range = e.target.dataset.range; render(); } });
-    $("currency").addEventListener("change", (e) => { state.currency = e.target.value; render(); });
+    $("currency").addEventListener("change", (e) => {
+      const before = mf();
+      if (document.activeElement && document.activeElement !== e.target) document.activeElement.blur();
+      state.currency = e.target.value;
+      const k = mf() / before;
+      ["invest", "pb", "pt", "manualPrice"].forEach((key) => { if (state[key] > 0) state[key] = Math.round(state[key] * k); });
+      render();
+    });
     $("manualPrice").addEventListener("input", (e) => { state.manualPrice = +e.target.value || null; render(); });
     $("refresh").addEventListener("click", refresh);
     $("reset").addEventListener("click", () => {

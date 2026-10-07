@@ -48,11 +48,11 @@
         <p class="muted">Kauf <b>heute</b>: nach mehr als einem Jahr Haltefrist steuerfrei (§ 23 EStG).
           Kauf <b>nach dem Stichtag</b>: Annahme, dass Gewinne dann ohne Haltefrist besteuert werden.</p>
         <div class="form">
-          <label>Anlagebetrag (€)<input type="number" id="invest" min="100" step="100"></label>
+          <label><span class="lt">Anlagebetrag (<i class="cs">$</i>)</span><input type="number" id="invest" min="100" step="100"></label>
           <label>Stichtag neue Regel / Kauf später am<input type="date" id="buyDateB"></label>
           <label>Anlagehorizont: Verkauf in <span id="yearsLbl1"></span>
             <input type="range" id="years1" min="1" max="10" step="0.5"></label>
-          <label>Erwarteter Kurs beim Verkauf (€)<input type="number" id="pt1" min="1" step="1000"></label>
+          <label><span class="lt">Erwarteter Kurs beim Verkauf (<i class="cs">$</i>)</span><input type="number" id="pt1" min="1" step="1000"></label>
         </div>
         <p class="hint" id="ptHint1"></p>
       </div>
@@ -83,7 +83,7 @@
         <label>Persönlicher Steuersatz bei Verkauf &lt; 1 Jahr (%)<input type="number" id="personal" step="0.5" min="0" max="50"></label>
         <label>Freigrenze § 23 EStG (€/Jahr)<input type="number" id="freigrenze" step="100" min="0"></label>
       </div>
-      <p class="hint">26,375 % = 25 % Abgeltungsteuer + 5,5 % Soli (mit Kirchensteuer ca. 27,8–28 %). Freibetrag 1.000 € (Ledige) bzw. 2.000 € (Verheiratete), sofern nicht schon durch andere Kapitalerträge verbraucht. Ob und ab wann eine neue Besteuerung kommt, ist eine Annahme – bitte den aktuellen Stand prüfen.</p>
+      <p class="hint">26,375 % = 25 % Abgeltungsteuer + 5,5 % Soli (mit Kirchensteuer ca. 27,8–28 %). Freibetrag 1.000 € (Ledige) bzw. 2.000 € (Verheiratete), sofern nicht schon durch andere Kapitalerträge verbraucht. Freibetrag und Freigrenze gibst du in Euro ein; bei Dollar-Anzeige werden sie zum aktuellen Kurs umgerechnet. Ob und ab wann eine neue Besteuerung kommt, ist eine Annahme – bitte den aktuellen Stand prüfen.</p>
     </details>
   </section>
 
@@ -95,8 +95,8 @@
         <div class="form">
           <label>Kursverlauf aus
             <select id="source"></select></label>
-          <label>Kurs beim späteren Kauf (€)<input type="number" id="pb" min="1" step="1000"></label>
-          <label>Erwarteter Kurs beim Verkauf (€)<input type="number" id="pt2" min="1" step="1000"></label>
+          <label><span class="lt">Kurs beim späteren Kauf (<i class="cs">$</i>)</span><input type="number" id="pb" min="1" step="1000"></label>
+          <label><span class="lt">Erwarteter Kurs beim Verkauf (<i class="cs">$</i>)</span><input type="number" id="pt2" min="1" step="1000"></label>
           <label>Anlagehorizont: Verkauf in <span id="yearsLbl2"></span>
             <input type="range" id="years2" min="1" max="10" step="0.5"></label>
         </div>
@@ -197,8 +197,8 @@
 </main>
 
 <footer>
-  <label class="cur">Anzeige in
-    <select id="currency"><option value="EUR">Euro</option><option value="USD">US-Dollar</option></select>
+  <label class="cur">Währung
+    <select id="currency"><option value="USD">US-Dollar</option><option value="EUR">Euro</option></select>
   </label>
   <label class="cur">Kurs manuell
     <input type="number" id="manualPrice" placeholder="leer = live" step="100">

@@ -3,6 +3,11 @@
 Versionierung nach [SemVer](https://semver.org/lang/de/): MAJOR.MINOR.PATCH.
 Die Versionsnummer steht in `VERSION`, `package.json` und `app.js` (`VERSION`) und wird in der App angezeigt.
 
+## 1.2.0 – 2026-10-07
+
+- **Alles in US-Dollar:** Live-Kurs, Anlagebetrag, Kaufkurse, Ergebnisse, Tabellen und Diagramme werden standardmäßig in Dollar angezeigt und gerechnet. Euro lässt sich unten bei „Währung“ umschalten; eigene Beträge werden dabei mit umgerechnet.
+- Freibetrag und Freigrenze bleiben Euro-Beträge (gesetzliche Werte) und werden zum aktuellen EUR/USD-Kurs umgerechnet.
+
 ## 1.1.0 – 2026-10-07
 
 - **Eine einzige Datei:** `dist/bitcoin-steuerrechner.html` enthält alles (Code, Kursdaten, Diagramm-Bibliothek). In 1.0.0 funktionierte `index.html` nur zusammen mit den übrigen Dateien des Ordners, deshalb lief allein geöffnet keine Berechnung.

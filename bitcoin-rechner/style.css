@@ -115,6 +115,8 @@ details.card[open] summary::before { content: "▾ "; }
 @media (max-width: 520px) { .form { grid-template-columns: 1fr; } }
 label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); font-weight: 550; }
 label span { color: var(--text); font-weight: 650; }
+label .lt { color: var(--muted); font-weight: 550; }
+.cs { font-style: normal; }
 input, select {
   font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--border);
   border-radius: 8px; padding: 8px 10px; min-width: 0; width: 100%;
